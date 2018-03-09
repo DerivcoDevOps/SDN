@@ -6,6 +6,7 @@ Param(
 $BaseDir = "c:\k"
 
 # Prepare POD infra Images
+Start-Service docker
 start powershell $BaseDir\InstallImages.ps1
 
 # Prepare Network & Start Infra services
