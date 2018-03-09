@@ -7,10 +7,11 @@ chmod u+x generate-certs.sh
 ./generate-certs.sh $2
 ## about manifest
 cd ~/kube/manifest
-./generate.py $MASTER_IP --cluster-cidr $1.0.0/16
+./generate.py $2 --cluster-cidr $1.0.0/16
 ## about kube
 cd ~/kube
 ./configure-kubectl.sh $2
 ## copy
+rm -rf ~/kube/kubelet
 mkdir ~/kube/kubelet
 sudo cp ~/.kube/config ~/kube/kubelet/
