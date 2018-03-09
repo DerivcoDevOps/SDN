@@ -294,7 +294,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("master",
                     help="the IP address of this node, found via ifconfig")
-parser.add_argument("--etcd-version", default="3.0.17",
+parser.add_argument("--etcd-version", default="3.1.11",
                     help="""specifies the image version to use for the etcd
                     manifest file.""")
 parser.add_argument("--controller-version", default="v1.9.3",
