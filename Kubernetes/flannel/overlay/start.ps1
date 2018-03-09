@@ -1,6 +1,5 @@
 ﻿Param(
-    [parameter(Mandatory = $false)] $clusterCIDR="10.168.0.0/16",
-    [parameter(Mandatory = $false)] $thisIP="192.168.91.2",
+    [parameter(Mandatory = $false)] $clusterCIDR="192.168.0.0/16",
     [parameter(Mandatory = $true)] $ManagementIP
 )
 
@@ -30,7 +29,6 @@ function DownloadFileOverHttps()
     [System.Net.ServicePointManager]::SecurityProtocol = $secureProtocols
 
     try {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         curl $Url -UseBasicParsing -OutFile $DestinationPath -Verbose
         Write-Log "Downloaded $Url=>$DestinationPath"
     } catch {
@@ -40,7 +38,8 @@ function DownloadFileOverHttps()
 
 function DownloadFlannelBinaries()
 {
-    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/flanneld.exe" -DestinationPath $BaseDir\flanneld.exe
+    md c:\flannel\ -ErrorAction Ignore
+    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/flanneld.exe" -DestinationPath c:\flannel\flanneld.exe
 }
 
 function DownloadCniBinaries()
@@ -48,11 +47,14 @@ function DownloadCniBinaries()
     Write-Host "Downloading CNI binaries"
     DownloadFlannelBinaries
     md $BaseDir\cni -ErrorAction Ignore
+    md $BaseDir\cni\config -ErrorAction Ignore
+    md c:\etc -ErrorAction Ignore
+    md c:\etc\kube-flannel\ -ErrorAction Ignore
     DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/cni/config/cni.conf" -DestinationPath $BaseDir\cni\config\cni.conf 
-    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/cni-conf.json" -DestinationPath $BaseDir\net-conf.json
-    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/overlay.exe" -DestinationPath $BaseDir\cni\overlay.exe
-    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/flannel.exe" -DestinationPath $BaseDir\cni\flannel.exe
-    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/host-local.exe" -DestinationPath $BaseDir\cni\host-local.exe
+    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/net-conf.json" -DestinationPath c:\etc\kube-flannel\net-conf.json
+    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/cni/overlay.exe" -DestinationPath $BaseDir\cni\overlay.exe
+    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/cni/flannel.exe" -DestinationPath $BaseDir\cni\flannel.exe
+    DownloadFileOverHttps -Url "https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/cni/host-local.exe" -DestinationPath $BaseDir\cni\host-local.exe
 }
 
 function DownloadWindowsKubernetesScripts()
@@ -61,7 +63,7 @@ function DownloadWindowsKubernetesScripts()
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/hns.psm1 -DestinationPath $BaseDir\hns.psm1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/InstallImages.ps1 -DestinationPath $BaseDir\InstallImages.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/Dockerfile -DestinationPath $BaseDir\Dockerfile
-    DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/Stop.ps1 -DestinationPath $BaseDir\Stop.ps1
+    DownloadFileOverHttps -Url https://raw.githubusercontent.com/Microsoft/SDN/master/Kubernetes/windows/stop.ps1 -DestinationPath $BaseDir\Stop.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/start-kubelet.ps1 -DestinationPath $BaseDir\start-Kubelet.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/start-kubeproxy.ps1 -DestinationPath $BaseDir\start-Kubeproxy.ps1
 }
@@ -79,9 +81,9 @@ function StartFlanneld($ipaddress)
     # Start FlannelD, which would recreate the network.
     # Expect disruption in node connectivity for few seconds
     pushd 
-    #cd C:\flannel\
+    cd C:\flannel\
     [Environment]::SetEnvironmentVariable("NODE_NAME", (hostname).ToLower())
-    start $BaseDir\flanneld.exe -ArgumentList "--kubeconfig-file=C:\k\config --iface=$thisIP --ip-masq=1 --kube-subnet-mgr=1" # -NoNewWindow
+    start C:\flannel\flanneld.exe -ArgumentList "--kubeconfig-file=C:\k\config --iface=$ipaddress --ip-masq=1 --kube-subnet-mgr=1" # -NoNewWindow
     popd
 
     # Wait till the network is available
@@ -112,9 +114,7 @@ function CleanupOldNetwork()
 $BaseDir = "c:\k"
 md $BaseDir -ErrorAction Ignore
 # Download All the files
-# DownloadAllFiles
-mkdir -Force c:\etc\kube-flannel\
-cp net-conf.json c:\etc\kube-flannel\net-conf.json
+DownloadAllFiles
 
 # Prepare POD infra Images
 start powershell $BaseDir\InstallImages.ps1
