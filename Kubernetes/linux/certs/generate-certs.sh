@@ -29,3 +29,7 @@ openssl req -new -key apiserver-key.pem -out apiserver.csr \
 openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem \
              -CAcreateserial -out apiserver.pem -days 365 \
              -extensions v3_req -extfile openssl.cnf
+
+mkdir /etc/kubernetes
+mkdir /etc/kubernetes/certs
+cp *.pem /etc/kubernetes/certs/
