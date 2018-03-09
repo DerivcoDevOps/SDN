@@ -32,4 +32,4 @@ openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem \
 
 mkdir /etc/kubernetes
 mkdir /etc/kubernetes/certs
-cp *.pem /etc/kubernetes/certs/
+cp ~/kube/certs/*.pem /etc/kubernetes/certs/
