@@ -65,6 +65,7 @@ function DownloadWindowsKubernetesScripts()
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/InstallImages.ps1 -DestinationPath $BaseDir\InstallImages.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/windows/Dockerfile -DestinationPath $BaseDir\Dockerfile
     DownloadFileOverHttps -Url https://raw.githubusercontent.com/Microsoft/SDN/master/Kubernetes/windows/stop.ps1 -DestinationPath $BaseDir\Stop.ps1
+    DownloadFileOverHttps -Url https://raw.githubusercontent.com/Microsoft/SDN/master/Kubernetes/windows/pause.ps1 -DestinationPath $BaseDir\Pause.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/overlay/start-kubelet.ps1 -DestinationPath $BaseDir\start-Kubelet.ps1
     DownloadFileOverHttps -Url https://github.com/Microsoft/SDN/raw/master/Kubernetes/flannel/l2bridge/start-kubeproxy.ps1 -DestinationPath $BaseDir\start-Kubeproxy.ps1
 }
@@ -153,7 +154,7 @@ Start powershell -ArgumentList "-File $BaseDir\start-kubelet.ps1 -clusterCIDR $c
 # Remote endpoint should be programmed by Flanneld
 
 # Wait for sometime to start Proxy, as it would race with Flanneld VXLan agent to program the RemoteEndpoint.
-Write-Host "Sleep 60"
-Start-Sleep 60
-Write-Host "Start Kubeproxy"
-start powershell -ArgumentList " -File $BaseDir\start-kubeproxy.ps1 -NetworkName $NetworkName"
+#Write-Host "Sleep 60"
+#Start-Sleep 60
+#Write-Host "Start Kubeproxy"
+#start powershell -ArgumentList " -File $BaseDir\start-kubeproxy.ps1 -NetworkName $NetworkName"
