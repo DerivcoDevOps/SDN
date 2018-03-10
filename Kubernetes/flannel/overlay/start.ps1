@@ -1,6 +1,7 @@
 ﻿Param(
     [parameter(Mandatory = $false)] $clusterCIDR="192.168.0.0/16",
-    [parameter(Mandatory = $true)] $ManagementIP
+    [parameter(Mandatory = $true)] $ManagementIP,
+    [parameter(Mandatory = $true)] $NodeIP
 )
 
 function DownloadFileOverHttps()
@@ -76,13 +77,16 @@ function DownloadAllFiles()
 
 function StartFlanneld($ipaddress)
 {
+    Write-Host "Cleanup Old Network"
     CleanupOldNetwork
 
     # Start FlannelD, which would recreate the network.
     # Expect disruption in node connectivity for few seconds
+    Write-Host "Recreate Network"
     pushd 
     cd C:\flannel\
     [Environment]::SetEnvironmentVariable("NODE_NAME", (hostname).ToLower())
+    Write-Host "Run Flannel"
     start C:\flannel\flanneld.exe -ArgumentList "--kubeconfig-file=C:\k\config --iface=$ipaddress --ip-masq=1 --kube-subnet-mgr=1" # -NoNewWindow
     popd
 
@@ -96,8 +100,10 @@ function StartFlanneld($ipaddress)
 
 function CleanupOldNetwork()
 {
+    Write-Host "Enter Cleanup Old Network"
     $hnsNetwork = Get-HnsNetwork | ? Type -EQ $NetworkMode.ToLower()
-
+    
+    Write-Host "Check Cleanup Old Network"
     if ($hnsNetwork)
     {
         # Cleanup all containers
@@ -111,30 +117,43 @@ function CleanupOldNetwork()
     Start-Sleep 10
 }
 
+#Start Service Docker
+Start-Service Docker
 $BaseDir = "c:\k"
 md $BaseDir -ErrorAction Ignore
 # Download All the files
 DownloadAllFiles
 
+# Turn off Windows Firewall
+Write-Host "Check for Firewall"
+NetSh Advfirewall set allprofiles state off
+
 # Prepare POD infra Images
+Write-Host "Check for Pod Images"
 start powershell $BaseDir\InstallImages.ps1
 
 # Prepare Network & Start Infra services
 $NetworkMode = "Overlay"
 $NetworkName = "vxlan0"
 
+Write-Host "Register node to Management"
 powershell $BaseDir\start-kubelet.ps1 -RegisterOnly
 
 # Open firewall for Overlay traffic
+Write-Host "Adding Firewall Rules"
 New-NetFirewallRule -Name OverlayTraffic4789UDP -Description "Overlay network traffic UDP" -Action Allow -LocalPort 4789 -Enabled True -DisplayName "Overlay Traffic 4789 UDP" -Protocol UDP -ErrorAction SilentlyContinue
 
 # Start Flannel only after this node is registered
-StartFlanneld $ManagementIP
+Write-Host "Start Flannel"
+StartFlanneld $NodeIP
 
+Write-Host "Start for Kubelet"
 Start powershell -ArgumentList "-File $BaseDir\start-kubelet.ps1 -clusterCIDR $clusterCIDR -NetworkName $NetworkName"
 
 # Remote endpoint should be programmed by Flanneld
 
 # Wait for sometime to start Proxy, as it would race with Flanneld VXLan agent to program the RemoteEndpoint.
-#Start-Sleep 60
-#start powershell -ArgumentList " -File $BaseDir\start-kubeproxy.ps1 -NetworkName $NetworkName"
+Write-Host "Sleep 60"
+Start-Sleep 60
+Write-Host "Start Kubeproxy"
+start powershell -ArgumentList " -File $BaseDir\start-kubeproxy.ps1 -NetworkName $NetworkName"
